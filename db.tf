@@ -1,3 +1,8 @@
+##################################################
+#                                                #
+# STEP 1: Terraform remote backend setup - START #
+#                                                #
+##################################################
 resource "digitalocean_database_cluster" "postgresql" {
   engine               = "pg"
   name                 = "db-postgresql-${var.do_region}-${var.do_project_name}"
@@ -32,3 +37,42 @@ resource "digitalocean_database_db" "terraform_backend" {
   cluster_id = digitalocean_database_cluster.postgresql.id
   name       = var.do_db_postgresql_terraform_backend_name
 }
+##################################################
+#                                                #
+# STEP 1: Terraform remote backend setup - END   #
+#                                                #
+##################################################
+
+##################################################
+#                                                #
+# STEP 2: Terraform remote backend setup - START #
+#                                                #
+##################################################
+resource "postgresql_role" "terraform" {
+  name = var.do_db_postgresql_terraform_backend_group_role_admin_name
+}
+
+resource "postgresql_grant" "terraform_db" {
+  database    = digitalocean_database_db.terraform_backend.name
+  role        = postgresql_role.terraform.name
+  object_type = "database"
+  privileges  = ["CREATE"]
+}
+
+resource "postgresql_grant" "terraform_schema_public" {
+  database    = digitalocean_database_db.terraform_backend.name
+  object_type = "schema"
+  privileges  = ["CREATE"]
+  role        = postgresql_role.terraform.name
+  schema      = "public"
+}
+
+resource "postgresql_grant_role" "terraform" {
+  role       = digitalocean_database_user.local_admin.name
+  grant_role = postgresql_role.terraform.name
+}
+##################################################
+#                                                #
+# STEP 2: Terraform remote backend setup - END   #
+#                                                #
+##################################################

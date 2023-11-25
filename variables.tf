@@ -1,3 +1,44 @@
+variable "do_project_description" {
+  type        = string
+  description = "DigitalOcean project description"
+  sensitive   = true
+}
+
+variable "do_project_environment" {
+  type        = string
+  description = "DigitalOcean project environment"
+  sensitive   = true
+}
+
+variable "do_project_name" {
+  type        = string
+  description = "DigitalOcean project name"
+  sensitive   = true
+}
+
+variable "do_project_purpose" {
+  type        = string
+  description = "DigitalOcean project purpose"
+  sensitive   = true
+}
+
+variable "do_region" {
+  type        = string
+  description = "DigitalOcean region"
+  sensitive   = true
+}
+
+variable "do_token" {
+  type        = string
+  description = "DigitalOcean API token"
+  sensitive   = true
+}
+
+##################################################
+#                                                #
+# STEP 1: Terraform remote backend setup - START #
+#                                                #
+##################################################
 variable "do_db_cluster_postgresql_node_number" {
   type        = number
   description = "DigitalOcean PostgreSQL cluster number of nodes"
@@ -36,43 +77,13 @@ variable "do_db_cluster_postgresql_window_hour" {
 
 variable "do_db_postgresql_terraform_backend_name" {
   type        = string
-  description = "DigitalOcean PostgreSQL database name for Terraform backend"
+  description = "DigitalOcean PostgreSQL Terraform backend database name"
   sensitive   = true
 }
 
-variable "do_project_description" {
+variable "do_db_postgresql_terraform_backend_group_role_admin_name" {
   type        = string
-  description = "DigitalOcean project description"
-  sensitive   = true
-}
-
-variable "do_project_environment" {
-  type        = string
-  description = "DigitalOcean project environment"
-  sensitive   = true
-}
-
-variable "do_project_name" {
-  type        = string
-  description = "DigitalOcean project name"
-  sensitive   = true
-}
-
-variable "do_project_purpose" {
-  type        = string
-  description = "DigitalOcean project purpose"
-  sensitive   = true
-}
-
-variable "do_region" {
-  type        = string
-  description = "DigitalOcean region"
-  sensitive   = true
-}
-
-variable "do_token" {
-  type        = string
-  description = "DigitalOcean API token"
+  description = "DigitalOcean PostgreSQL Terraform backend database admin group role name"
   sensitive   = true
 }
 
@@ -93,3 +104,48 @@ variable "ip_local_admin" {
   description = "Local admin IP address"
   sensitive   = true
 }
+##################################################
+#                                                #
+# STEP 1: Terraform remote backend setup - END   #
+#                                                #
+##################################################
+
+##################################################
+#                                                #
+# STEP 2: Terraform remote backend setup - START #
+#                                                #
+##################################################
+variable "psql_terraform_backend_ca_path" {
+  type        = string
+  description = "PostgreSQL Terraform backend database CA certificate file path"
+  sensitive   = true
+}
+
+variable "psql_terraform_backend_host" {
+  type        = string
+  description = "PostgreSQL Terraform backend database host"
+  sensitive   = true
+}
+
+variable "psql_terraform_backend_password" {
+  type        = string
+  description = "PostgreSQL Terraform backend database user password"
+  sensitive   = true
+}
+
+variable "psql_terraform_backend_port" {
+  type        = number
+  description = "PostgreSQL Terraform backend database port"
+  sensitive   = true
+}
+
+variable "psql_terraform_backend_username" {
+  type        = string
+  description = "PostgreSQL Terraform backend database username"
+  sensitive   = true
+}
+##################################################
+#                                                #
+# STEP 2: Terraform remote backend setup - END   #
+#                                                #
+##################################################
