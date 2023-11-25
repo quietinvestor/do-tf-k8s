@@ -1,3 +1,3 @@
-# TF-k8s
+# DigitalOcean Terraform Kubernetes
 
-Kubernetes cluster built with Terraform.
+Kubernetes cluster built with Terraform on DigitalOcean.
