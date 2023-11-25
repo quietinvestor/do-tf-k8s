@@ -1,3 +1,3 @@
-# DigitalOcean Terraform Kubernetes
+# DigitalOcean Terraform PostgreSQL Backend
 
-Kubernetes cluster built with Terraform on DigitalOcean.
+PostgreSQL backend for Terraform on DigitalOcean.
