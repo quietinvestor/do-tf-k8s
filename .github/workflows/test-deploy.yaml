@@ -1,5 +1,5 @@
 name: Test deployment
-on: workflow_dispatch
+on: [push, workflow_dispatch]
 jobs:
   test-deploy:
     runs-on: ubuntu-22.04
@@ -44,7 +44,7 @@ jobs:
       - name: Apply Terraform plan
         run: terraform apply -auto-approve
       - name: Placeholder for additional steps
-        run: sleep 3600 # Pause for 5 minutes
+        run: sleep 60 # Pause for 1 minute
       - name: Destroy Terraform deployment
         run: terraform destroy -auto-approve
 
