@@ -1,0 +1,50 @@
+name: Test deployment
+on: workflow_dispatch
+jobs:
+  test-deploy:
+    runs-on: ubuntu-22.04
+    environment: test
+    env:
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+      TF_VAR_do_environment: ${{ secrets.TF_VAR_DO_ENVIRONMENT }}
+      TF_VAR_do_project_description: ${{ secrets.TF_VAR_DO_PROJECT_DESCRIPTION }}
+      TF_VAR_do_project_environment: ${{ secrets.TF_VAR_DO_PROJECT_ENVIRONMENT }}
+      TF_VAR_do_project_name: ${{ secrets.TF_VAR_DO_PROJECT_NAME }}
+      TF_VAR_do_project_purpose: ${{ secrets.TF_VAR_DO_PROJECT_PURPOSE }}
+      TF_VAR_do_region: ${{ secrets.TF_VAR_DO_REGION }}
+      TF_VAR_do_db_cluster_postgresql_node_number: ${{ secrets.TF_VAR_DO_DB_CLUSTER_POSTGRESQL_NODE_NUMBER }}
+      TF_VAR_do_db_cluster_postgresql_node_size: ${{ secrets.TF_VAR_DO_DB_CLUSTER_POSTGRESQL_NODE_SIZE }}
+      TF_VAR_do_db_cluster_postgresql_version: ${{ secrets.TF_VAR_DO_DB_CLUSTER_POSTGRESQL_VERSION }}
+      TF_VAR_do_db_cluster_postgresql_window_day: ${{ secrets.TF_VAR_DO_DB_CLUSTER_POSTGRESQL_WINDOW_DAY }}
+      TF_VAR_do_db_cluster_postgresql_window_hour: ${{ secrets.TF_VAR_DO_DB_CLUSTER_POSTGRESQL_WINDOW_HOUR }}
+      TF_VAR_do_db_postgresql_terraform_backend_name: ${{ secrets.TF_VAR_DO_DB_POSTGRESQL_TERRAFORM_BACKEND_NAME }}
+      TF_VAR_do_vpc_postgresql_description: ${{ secrets.TF_VAR_DO_VPC_POSTGRESQL_DESCRIPTION }}
+      TF_VAR_do_vpc_postgresql_ip_range: ${{ secrets.TF_VAR_DO_VPC_POSTGRESQL_IP_RANGE }}
+      TF_VAR_ip_local_admin: ${{ secrets.TF_VAR_IP_LOCAL_ADMIN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Install doctl
+        uses: digitalocean/action-doctl@e5cb5b0cde9789f79c5115c2c4d902f38a708804 # v2.5.0
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          version: v1.101.0 # v2.5.0 depends on doctl >= v1.101.0
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36 # v3.0.0
+        with:
+          terraform_version: 1.6.5
+      - name: Check Terraform file format
+        run: terraform fmt -check
+      - name: Initialise Terraform
+        run: terraform init
+      - name: Validate Terraform code
+        run: terraform validate
+      - name: Create Terraform plan
+        run: terraform plan
+      - name: Apply Terraform plan
+        run: terraform apply -auto-approve
+      - name: Placeholder for additional steps
+        run: sleep 3600 # Pause for 5 minutes
+      - name: Destroy Terraform deployment
+        run: terraform destroy -auto-approve
+
