@@ -34,12 +34,6 @@ variable "do_region" {
   sensitive   = true
 }
 
-variable "do_token" {
-  type        = string
-  description = "DigitalOcean API token"
-  sensitive   = true
-}
-
 variable "do_db_cluster_postgresql_node_number" {
   type        = number
   description = "DigitalOcean PostgreSQL cluster number of nodes"
