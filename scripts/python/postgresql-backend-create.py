@@ -4,7 +4,7 @@ import psycopg2
 from psycopg2 import sql
 import requests
 
-def do_db_cluster_get_conn_dict(do_api_token, do_db_cluster_name, do_db_name):
+def do_api_request_get(do_api_token, do_api_endpoint):
     api_token = do_api_token
     api_url_base = "https://api.digitalocean.com/v2/"
 
@@ -13,17 +13,34 @@ def do_db_cluster_get_conn_dict(do_api_token, do_db_cluster_name, do_db_name):
         'Authorization': f"Bearer {api_token}"
     }
   
-    api_url = f"{api_url_base}databases"
+    api_url = f"{api_url_base}{do_api_endpoint}"
 
-    response = requests.get(api_url, headers=headers)
-    
-    if response.status_code == 200:
-        database_list = json.loads(response.content.decode('utf-8'))
+    try:
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status() 
+    except requests.exceptions.HTTPError as errhttp: 
+        print("HTTP Error") 
+        raise SystemExit(errhttp)
+    except requests.exceptions.ReadTimeout as errrt: 
+        print("Time out") 
+        raise SystemExit(errrt)
+    except requests.exceptions.ConnectionError as errconn: 
+        print("Connection error") 
+        raise SystemExit(errconn)
+    except requests.exceptions.RequestException as errex: 
+        print("Exception request")
+        raise SystemExit(errex)
     else:
-        database_list = None
+        if response.status_code == 200:
+            response_json = response.json()
+        else:
+            response_json = None
+    finally:
+        return response_json
 
-    if database_list is not None:
-        for cluster in database_list["databases"]:
+def do_db_cluster_get_conn_dict(do_db_cluster_name, do_db_name, do_db_list):
+    if do_db_list is not None:
+        for cluster in do_db_list["databases"]:
             if cluster["name"] == do_db_cluster_name:
                 if do_db_name in cluster["db_names"]:
                     cluster["connection"]["database"] = do_db_name
@@ -32,17 +49,24 @@ def do_db_cluster_get_conn_dict(do_api_token, do_db_cluster_name, do_db_name):
                     print(f"No database exists with name: {do_db_name}")
             else:
                 print(f"No cluster exists with name: {do_db_cluster_name}")
-                return None
     else:
         print(f"DigitalOcean database cluster connection details request failed for {do_db_cluster_name}")
 
-def sql_script(do_db_schema_name, do_db_sequence_name, do_db_group_name, do_db_user_name, do_db_user_password):
+    return None
+
+def sql_script(db_schema_name, db_sequence_name, db_group_name, db_user_name, db_user_password):
+    schema_name = sql.Identifier(db_schema_name)
+    seq_name = sql.Identifier(db_sequence_name)
+    group_name = sql.Identifier(db_group_name)
+    user_name = sql.Identifier(db_user_name)
+    user_password = sql.Literal(db_user_password)
+
     cmd_list = [
                 sql.SQL("CREATE SCHEMA IF NOT EXISTS {schema};").format(
-                    schema=sql.Identifier(do_db_schema_name)),
+                    schema = schema_name),
                 sql.SQL("CREATE SEQUENCE IF NOT EXISTS {schema}.{seq} AS bigint;").format(
-                    schema=sql.Identifier(do_db_schema_name),
-                    seq=sql.Identifier(do_db_sequence_name)),
+                    schema = schema_name,
+                    seq = seq_name),
                 sql.SQL("""
                     CREATE TABLE IF NOT EXISTS {schema}.states (
                         id bigint NOT NULL DEFAULT nextval(\'{schema}.{seq}\') PRIMARY KEY,
@@ -50,36 +74,36 @@ def sql_script(do_db_schema_name, do_db_sequence_name, do_db_group_name, do_db_u
                         data text
                     );
                     """).format(
-                    schema=sql.Identifier(do_db_schema_name),
-                    seq=sql.Identifier(do_db_sequence_name)),
+                    schema = schema_name,
+                    seq = seq_name),
                 sql.SQL("CREATE UNIQUE INDEX IF NOT EXISTS states_by_name ON {schema}.states (name);").format(
-                    schema=sql.Identifier(do_db_schema_name)),
+                    schema = schema_name),
                 sql.SQL("CREATE role {group};").format(
-                    group=sql.Identifier(do_db_group_name)),
+                    group = group_name),
                 sql.SQL("GRANT USAGE ON SCHEMA {schema} TO {group};").format(
-                    schema=sql.Identifier(do_db_schema_name),
-                    group=sql.Identifier(do_db_group_name)),
+                    schema = schema_name,
+                    group = group_name),
                 sql.SQL("GRANT ALL ON SEQUENCE {schema}.{seq} TO {group};").format(
-                    schema=sql.Identifier(do_db_schema_name),
-                    seq=sql.Identifier(do_db_sequence_name),
-                    group=sql.Identifier(do_db_group_name)),
+                    schema = schema_name,
+                    seq = seq_name,
+                    group = group_name),
                 sql.SQL("""
                     GRANT ALL
                     ON {schema}.states
                     TO {group};
                     """).format(
-                    schema=sql.Identifier(do_db_schema_name),
-                    group=sql.Identifier(do_db_group_name)),
+                    schema = schema_name,
+                    group = group_name),
                 sql.SQL("""
                     CREATE role {user}
                     LOGIN
-                    PASSWORD \'{password}\';
+                    PASSWORD {password};
                     """).format(
-                    user=sql.Identifier(do_db_user_name),
-                    password=sql.Identifier(do_db_user_password)),
+                    user = user_name,
+                    password = user_password),
                 sql.SQL("GRANT {group} TO {user};").format(
-                    group=sql.Identifier(do_db_group_name),
-                    user=sql.Identifier(do_db_user_name))
+                    group = group_name,
+                    user = user_name)
     ]
 
     return cmd_list
@@ -94,15 +118,17 @@ def do_db_cluster_connect(do_db_cluster_conn_dict, sql_cmds):
             password = do_db_cluster_conn_dict["password"],
             host = do_db_cluster_conn_dict["host"],
             port = do_db_cluster_conn_dict["port"])
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+    else:
+        print("Database connection open.")
 
         with db_cluster_connection:
             with db_cluster_connection.cursor() as curs:
                 for cmd in sql_cmds:
                     curs.execute(cmd)
 
-    except (Exception, psycopg2.DatabaseError) as error:
-        print(error)
-
+        print("Successfully executed SQL script.")
     finally:
         if db_cluster_connection is not None:
             db_cluster_connection.close()
@@ -130,6 +156,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    db_cluster_conn_dict = do_db_cluster_get_conn_dict(args.token, args.cluster_name, args.database_name)
+    db_list = do_api_request_get(args.token, "databases")
+    db_cluster_conn_dict = do_db_cluster_get_conn_dict(args.cluster_name, args.database_name, db_list)
     sql_cmd_list = sql_script(args.schema_name, args.sequence_name, args.group_name, args.user_name, args.user_password)
     do_db_cluster_connect(db_cluster_conn_dict, sql_cmd_list)
