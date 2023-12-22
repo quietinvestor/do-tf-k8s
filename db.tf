@@ -21,6 +21,11 @@ resource "digitalocean_database_firewall" "postgresql" {
     type  = "ip_addr"
     value = var.ip_local_admin
   }
+
+  rule {
+    type  = "ip_addr"
+    value = var.ip_github_actions_runner
+  }
 }
 
 resource "digitalocean_database_db" "terraform_backend" {

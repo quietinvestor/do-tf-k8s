@@ -87,3 +87,10 @@ variable "ip_local_admin" {
   description = "Local admin IP address"
   sensitive   = true
 }
+
+variable "ip_github_actions_runner" {
+  type        = string
+  default     = "127.0.0.1"
+  description = "GitHub Actions runner IP address"
+  sensitive   = true
+}
