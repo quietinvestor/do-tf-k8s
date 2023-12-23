@@ -6,6 +6,11 @@ jobs:
     environment: test
     env:
       DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+      test_schema_name: ${{ secrets.TEST_SCHEMA_NAME }}
+      test_seq_name: ${{ secrets.TEST_SEQ_NAME }}
+      test_group_name: ${{ secrets.TEST_GROUP_NAME }}
+      test_user_name: ${{ secrets.TEST_USER_NAME }}
+      test_user_password: ${{ secrets.TEST_USER_PASSWORD }}
       TF_VAR_do_environment: ${{ secrets.TF_VAR_DO_ENVIRONMENT }}
       TF_VAR_do_project_description: ${{ secrets.TF_VAR_DO_PROJECT_DESCRIPTION }}
       TF_VAR_do_project_environment: ${{ secrets.TF_VAR_DO_PROJECT_ENVIRONMENT }}
@@ -46,6 +51,17 @@ jobs:
         run: terraform plan
       - name: Apply Terraform plan
         run: terraform apply -auto-approve
+      - name: Create test Terraform PostgreSQL backend
+        run: |
+          python scripts/python/postgresql-backend-create.py \
+          -t "$DIGITALOCEAN_ACCESS_TOKEN" \
+          -c "db-postgresql-${TF_VAR_do_region}-${TF_VAR_do_project_name}-${TF_VAR_do_environment}" \
+          -d "$TF_VAR_do_db_postgresql_terraform_backend_name" \
+          -s "$test_schema_name" \
+          -q "$test_seq_name" \
+          -g "$test_group_name" \
+          -u "$test_user_name" \
+          -p "$test_user_password"
       - name: Placeholder for additional steps
         run: sleep 60 # Pause for 1 minute
       - name: Destroy Terraform deployment
