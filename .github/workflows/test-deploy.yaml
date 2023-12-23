@@ -46,7 +46,10 @@ jobs:
       - name: Validate Terraform code
         run: terraform validate
       - name: Get GitHub Actions runner IP address
-        run: echo "TF_VAR_ip_github_actions_runner=$(curl -s https://api.ipify.org/)" >> $GITHUB_ENV
+        run: |
+          ip_github_actions_runner=$(curl -s https://api.ipify.org/)
+          echo "::add-mask::$ip_github_actions_runner"
+          echo "TF_VAR_ip_github_actions_runner=$ip_github_actions_runner" >> $GITHUB_ENV
       - name: Create Terraform plan
         run: terraform plan
       - name: Apply Terraform plan
