@@ -16,7 +16,7 @@ def do_api_request_get(do_api_token, do_api_endpoint):
     api_url = f"{api_url_base}{do_api_endpoint}"
 
     try:
-        response = requests.get(api_url, headers=headers)
+        response = requests.get(api_url, headers = headers, timeout = 5)
         response.raise_for_status() 
     except requests.exceptions.HTTPError as errhttp: 
         print("HTTP Error") 
@@ -117,7 +117,8 @@ def do_db_cluster_connect(do_db_cluster_conn_dict, sql_cmds):
             user = do_db_cluster_conn_dict["user"],
             password = do_db_cluster_conn_dict["password"],
             host = do_db_cluster_conn_dict["host"],
-            port = do_db_cluster_conn_dict["port"])
+            port = do_db_cluster_conn_dict["port"],
+            connect_timeout = 5)
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
     else:
