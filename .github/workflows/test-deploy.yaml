@@ -54,9 +54,9 @@ jobs:
         run: terraform plan
       - name: Apply Terraform plan
         run: terraform apply -auto-approve
-      - name: Create test Terraform PostgreSQL backend
+      - name: Create Terraform PostgreSQL backend
         run: |
-          python scripts/python/postgresql-backend-create.py \
+          postgresql_backend_conn_str=$(python scripts/python/postgresql-backend-create.py \
           -t "$DIGITALOCEAN_ACCESS_TOKEN" \
           -c "db-postgresql-${TF_VAR_do_region}-${TF_VAR_do_project_name}-${TF_VAR_do_environment}" \
           -d "$TF_VAR_do_db_postgresql_terraform_backend_name" \
@@ -64,7 +64,10 @@ jobs:
           -q "$test_seq_name" \
           -g "$test_group_name" \
           -u "$test_user_name" \
-          -p "$test_user_password"
+          -p "$test_user_password" \
+          2> /dev/null)
+          echo "::add-mask::$postgresql_backend_conn_str"
+          echo "PG_CONN_STR=$postgresql_backend_conn_str" >> $GITHUB_ENV
       - name: Placeholder for additional steps
         run: sleep 60 # Pause for 1 minute
       - name: Destroy Terraform deployment

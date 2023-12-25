@@ -1,8 +1,10 @@
 import argparse
 import json
 import psycopg2
+from psycopg2 import extensions
 from psycopg2 import sql
 import requests
+import sys
 
 def do_api_request_get(do_api_token, do_api_endpoint):
     api_token = do_api_token
@@ -122,18 +124,26 @@ def do_db_cluster_connect(do_db_cluster_conn_dict, sql_cmds):
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
     else:
-        print("Database connection open.")
+        print("Database connection open.", file=sys.stderr)
 
         with db_cluster_connection:
             with db_cluster_connection.cursor() as curs:
                 for cmd in sql_cmds:
                     curs.execute(cmd)
 
-        print("Successfully executed SQL script.")
+        print("Successfully executed SQL script.", file=sys.stderr)
     finally:
         if db_cluster_connection is not None:
             db_cluster_connection.close()
-            print('Database connection closed.')
+            print('Database connection closed.', file=sys.stderr)
+
+def do_db_cluster_conn_str_custom(do_db_cluster_conn_dict, do_db_name, db_user_name, db_user_password):
+    if do_db_cluster_conn_dict is not None:
+        conn_str_custom = f"postgresql://{db_user_name}:{db_user_password}@{do_db_cluster_conn_dict['host']}:{do_db_cluster_conn_dict['port']}/{do_db_name}?sslmode=require&connect_timeout=5"
+
+        return conn_str_custom
+    else:
+        return None
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -161,3 +171,9 @@ if __name__ == "__main__":
     db_cluster_conn_dict = do_db_cluster_get_conn_dict(args.cluster_name, args.database_name, db_list)
     sql_cmd_list = sql_script(args.schema_name, args.sequence_name, args.group_name, args.user_name, args.user_password)
     do_db_cluster_connect(db_cluster_conn_dict, sql_cmd_list)
+    db_conn_str_custom = do_db_cluster_conn_str_custom(db_cluster_conn_dict, args.database_name, args.user_name, args.user_password)
+
+    if db_conn_str_custom is not None:
+        print(db_conn_str_custom)
+    else:
+        print(f"Connection string for PostgresSQL DB cannot be {db_conn_str_custom}")
