@@ -68,6 +68,11 @@ jobs:
           2> /dev/null)
           echo "::add-mask::$postgresql_backend_conn_str"
           echo "PG_CONN_STR=$postgresql_backend_conn_str" >> $GITHUB_ENV
+      - name: Assign backend schema name to environment variable
+        run: |
+          test_sequence_name=$test_schema_name
+          echo "::add-mask::$test_sequence_name"
+          echo "PG_SCHEMA_NAME=$test_sequence_name" >> $GITHUB_ENV
       - name: Placeholder for additional steps
         run: sleep 60 # Pause for 1 minute
       - name: Destroy Terraform deployment
