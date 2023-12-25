@@ -6,7 +6,7 @@ jobs:
     environment: test
     env:
       DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-      test_schema_name: ${{ secrets.TEST_SCHEMA_NAME }}
+      PG_SCHEMA_NAME: ${{ secrets.TEST_SCHEMA_NAME }}
       test_seq_name: ${{ secrets.TEST_SEQ_NAME }}
       test_group_name: ${{ secrets.TEST_GROUP_NAME }}
       test_user_name: ${{ secrets.TEST_USER_NAME }}
@@ -60,21 +60,27 @@ jobs:
           -t "$DIGITALOCEAN_ACCESS_TOKEN" \
           -c "db-postgresql-${TF_VAR_do_region}-${TF_VAR_do_project_name}-${TF_VAR_do_environment}" \
           -d "$TF_VAR_do_db_postgresql_terraform_backend_name" \
-          -s "$test_schema_name" \
+          -s "$PG_SCHEMA_NAME" \
           -q "$test_seq_name" \
           -g "$test_group_name" \
           -u "$test_user_name" \
           -p "$test_user_password" \
           2> /dev/null)
-          echo "::add-mask::$postgresql_backend_conn_str"
           echo "PG_CONN_STR=$postgresql_backend_conn_str" >> $GITHUB_ENV
-      - name: Assign backend schema name to environment variable
-        run: |
-          test_sequence_name=$test_schema_name
-          echo "::add-mask::$test_sequence_name"
-          echo "PG_SCHEMA_NAME=$test_sequence_name" >> $GITHUB_ENV
-      - name: Placeholder for additional steps
+      - name: Check project001 Terraform file format
+        run: terraform -chdir="${{ github.workspace }}/tests/tf/project001/" fmt -check
+      - name: Initialise Terraform for project001
+        run: terraform -chdir="${{ github.workspace }}/tests/tf/project001/" init
+      - name: Validate Terraform code for project001
+        run: terraform -chdir="${{ github.workspace }}/tests/tf/project001/" validate
+      - name: Create Terraform plan for project001
+        run: terraform -chdir="${{ github.workspace }}/tests/tf/project001/" plan
+      - name: Apply Terraform plan for project001
+        run: terraform -chdir="${{ github.workspace }}/tests/tf/project001/" apply -auto-approve
+      - name: Placeholder for manual checks
         run: sleep 60 # Pause for 1 minute
+      - name: Destroy Terraform deployment for project001
+        run: terraform -chdir="${{ github.workspace }}/tests/tf/project001/" destroy -auto-approve
       - name: Destroy Terraform deployment
         run: terraform destroy -auto-approve
 
