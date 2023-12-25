@@ -3,7 +3,7 @@ resource "digitalocean_database_cluster" "postgresql" {
   name                 = "db-postgresql-${var.do_region}-${var.do_project_name}-${var.do_environment}"
   node_count           = var.do_db_cluster_postgresql_node_number
   private_network_uuid = digitalocean_vpc.postgresql.id
-  project_id           = digitalocean_project.do_tf_k8s.id
+  project_id           = digitalocean_project.do_tf_pg_backend.id
   region               = var.do_region
   size                 = var.do_db_cluster_postgresql_node_size
   version              = var.do_db_cluster_postgresql_version
