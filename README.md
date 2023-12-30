@@ -14,6 +14,12 @@
   * [Variables](#-variables)
     * [terraform.tfvars](#-terraformtfvars)
     * [Environment Variables](#-environment-variables)
+3. [Python](#3-python)
+  * [Setup](#-setup)
+  * [Create a PostgreSQL Remote Backend](#-create-a-postgresql-remote-backend)
+  * [Script](#-script)
+4. [PostgreSQL Remote Backend](#4-postgresql-remote-backend)
+  * [Usage](#-usage)
 
 ## 1. General
 
@@ -135,3 +141,99 @@ For example, to set `ip_local_admin` in your local `bash` shell:
 ```
 export TF_VAR_ip_local_admin="1.1.1.1"
 ```
+
+## 3. Python
+
+### &bull; Setup
+
+Assuming that you are using a python [virtual environment](https://docs.python.org/3/tutorial/venv.html) locally within the `do-tf-pg-backend` directory, you can simply install the package dependencies using the pip `requirements.txt` file.
+```
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r scripts/python/requirements.txt
+```
+
+### &bull; Create a PostgreSQL Remote Backend
+
+Once you have deployed the PostgreSQL database cluster on DigitalOcean with Terraform, you need to:
+1. Get the connection string for the database that you created with Terraform to hold all your remote backend `states` tables under different schemas.
+2. Connect to the database using the default `doadmin` superuser.
+3. Create all the necessary elements for a PostgreSQL remote backend for Terraform:
+  * Schema: This is the equivalent of a namespace in other languages.
+  * Sequence: This is used for numerically indexing the different `terraform.tfstate` row entries. The current Terraform `pg` remote backend implementation hard codes its creation under the default `public` schema of the database. However, to better leverage the separation of different terraform projects using schemas it is preferable to have a sequence within each dedidcated schema.
+  * Table: This table will keep all the `terraform.tfstate` files for a given Terraform project under the schema as row entries. Please note that you have to use [Terraform workspaces](https://developer.hashicorp.com/terraform/cli/workspaces) to have different corresponding row entries for `terraform.tfstate`. Unfortunately, the current Terraform `pg` remote backend implementation hard codes the table name to `states`, hence why said table name is preserved.
+  * Index: Unfortunately, the current Terraform `pg` remote backend implementation hard codes the index name to `states_by_name`, which is used by `states` table, hence why said index name is preserved.
+  * Group Role: For security and scalability, a group role is created with all the necessary privileges to access and use the created schema and its contents, except for login privileges. This allows to create user roles with login privileges and a corresponding password, who in turn become members of said group and inherit its privileges.
+  * User Role: Username and password to login to the PostgreSQL database.
+4. Get the same connections string as 1. above, but using your newly-created PostgreSQL user role name and password.
+
+### &bull; Script
+
+The `postgresql-backend-create.py` script automates the PostgreSQL remote backend creation by passing a set of required arguments as per the below and returning the PostgreSQL connection string to store in the `PG_CONN_STR` environment variable as required by the Terraform `pg` backend.
+```
+$ python postgresql-backend-create.py --help
+
+usage: postgresql-backend-create.py [-h] -c CLUSTER_NAME -d DATABASE_NAME -g GROUP_NAME -p USER_PASSWORD -q SEQUENCE_NAME -s SCHEMA_NAME -t TOKEN -u USER_NAME
+
+options:
+  -h, --help            show this help message and exit
+  -c CLUSTER_NAME, --cluster-name CLUSTER_NAME
+                        DigitalOcean PostgreSQL database cluster name
+  -d DATABASE_NAME, --database-name DATABASE_NAME
+                        PostgreSQL database name
+  -g GROUP_NAME, --group-name GROUP_NAME
+                        PostgreSQL database schema group name
+  -p USER_PASSWORD, --user-password USER_PASSWORD
+                        PostgreSQL database schema user password
+  -q SEQUENCE_NAME, --sequence-name SEQUENCE_NAME
+                        PostgreSQL database schema sequence name
+  -s SCHEMA_NAME, --schema-name SCHEMA_NAME
+                        PostgreSQL database schema name
+  -t TOKEN, --token TOKEN
+                        DigitalOcean API token
+  -u USER_NAME, --user-name USER_NAME
+                        PostgreSQL database schema user name
+```
+Please note that:
+* Preferably, all names used should follow the PostgreSQL naming convention of using only lowercase letters, numbers and underscores.
+* The PostgreSQL connection string is output as part of `stdout`, but there is other output printed to `stderr`. Therefore, please make sure that you redirect `stderr` when exporting the output to the `PG_CONN_STR` environment variable. For example, in `bash`,
+```
+export PG_CONN_STR=$(python scripts/python/postgresql-backend-create.py \
+-t "$DIGITALOCEAN_ACCESS_TOKEN" \
+-c "db-postgresql-${TF_VAR_do_region}-${TF_VAR_do_project_name}-${TF_VAR_do_environment}" \
+-d "$TF_VAR_do_db_postgresql_terraform_backend_name" \
+-s "$PG_SCHEMA_NAME" \
+-q "$seq_name" \
+-g "$group_name" \
+-u "$user_name" \
+-p "$user_password" \
+2> /dev/null)
+```
+In the above example, I make use of previously-defined environment variables for the Terraform deployment, new environment variables required only by the python script, as well as `PG_SCHEMA_NAME`, the custom name for your schema, which is the other environment variable required by the Terraform `pg` backend. Once more, the use of environment variables allows to pass the values safely via secrets or environment variables in your CI/CD pipeline, such as when using GitHub Actions.
+
+## 4. PostgreSQL Remote Backend
+
+### &bull; Usage
+
+Once the PostgreSQL database cluster has been deployed on DigitalOcean via Terraform and the necessary elements for the PostgreSQL remote backend created via the python script, including populating the `PG_CONN_STR` and `PG_SCHEMA_NAME` environment variables required by the Terraform `pg` backend, the only step left is to create a separate Terraform project that will store its `terraform.tfstate` file in that given schema `states` table.
+
+When configuring the `backend "pg" {}` block in `providers.tf`, please make sure to set all the `skip_..._creation` keys to `true`, given that the PostgreSQL remote backend has already been created. Otherwise, it will try to use its default values and fail.
+
+*providers.tf*
+```
+terraform {
+  required_providers {
+    digitalocean = {
+      source  = "digitalocean/digitalocean"
+      version = "2.32.0"
+    }
+  }
+
+  backend "pg" {
+    skip_schema_creation = true
+    skip_table_creation  = true
+    skip_index_creation  = true
+  }
+}
+```
+For reference, there is an example Terraform project in this repository under `tests/tf/project001/` that uses the newly-created PostgreSQL remote backend.
