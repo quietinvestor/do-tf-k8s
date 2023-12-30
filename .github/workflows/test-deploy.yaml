@@ -1,5 +1,11 @@
 name: Test deployment
-on: [push, workflow_dispatch]
+on:
+  push:
+    paths-ignore:
+      - '.gitignore'
+      - 'LICENSE'
+      - 'README.md'
+  workflow_dispatch:
 jobs:
   test-deploy:
     runs-on: ubuntu-22.04
