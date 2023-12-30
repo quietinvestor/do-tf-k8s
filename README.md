@@ -4,6 +4,8 @@
 
 1. [General](#1-general)
   * [Overview](#-overview)
+  * [Why](#-why)
+  * [Architecture](#-architecture)
   * [Requirements](#-requirements)
   * [Download](#-download)
 2. [Terraform](#2-terraform)
@@ -27,14 +29,31 @@
 
 PostgreSQL backend for Terraform on DigitalOcean.
 
+### &bull; Why?
+
+DigitalOcean currently supports two main Terraform remote backends:
+1. *S3*: While the Terraform `s3` backend supports any "S3-compatible" backend, such as DigitalOcean spaces, the maintainers have stated time and again that they only test the code against the official Amazon Web Services (AWS) S3 buckets. Therefore, there is no guarantee that it will always work with DigitalOcean workspaces. Additionally, state locking depends on AWS' DynamoDB, so it is not supported on DigitalOcean.
+2. *PostgreSQL*: The Terraform `pg` backend supports both storing the `terraform.tfstate` file in a `states` table, as well as state locking leveraging PostgreSQL's advisory locks. Moreover, PostgreSQL is not vendor-dependent.
+
+In its current state at the time of writing, the Terraform `pg` backend hard codes a lot of PostgreSQL database element values and as a result promotes a poor and wasteful design by requiring the creation of a new PostgreSQL database for each separate Terraform project remote backend.
+
+### &bull; Architecture
+
+PostgreSQL per-project remote Terraform backends are instead kept separate by leveraging PostgreSQL schemas, the equivalent of namespaces in other languages, thus avoiding having to create a separate database to provide the necessary isolation for each Terraform project. What is more, separate PostgreSQL group and user roles with privileges limited to the given schema are created for security and further segregation.
+
+The use of environment variables is promoted in the design both for security and ease-of-use when integrating it into CI/CD pipelines, such as GitHub Actions. See `.github/workflows/test-deploy.yaml` for an example.
+
+Usage of Terraform remote backends creates a [chicken or the egg](https://en.wikipedia.org/wiki/Chicken_or_the_egg) dilemma whereby you would like to use a remote backend for every Terraform project in order to keep a redundant backup copy of your `terraform.tfstate` file, as well as perhaps access it from your CI/CD pipeline runners, but at the same time you need to first create that Terraform remote backend with Terraform. Some people opt for using a bootstrapping approach within the same Terraform project, but I believe that it is cleaner to simply accept that the Terraform project that will create the remote backends for all your future Terraform projects will have to rely on a separate local `terraform.tfstate` file that you will have to manually back up by other means.
+
 ### &bull; Requirements
 
-- [DigitalOcean access token](https://docs.digitalocean.com/reference/api/create-personal-access-token/) with read and write scopes. For security, said token is passed via the environment variable `DIGITALOCEAN_ACCESS_TOKEN`. This allows to pass its value as a secret if desired. For example, to manually set the environment variable on a bash shell:
+- [DigitalOcean access token](https://docs.digitalocean.com/reference/api/create-personal-access-token/) with read and write scopes. For security, said token is passed via the environment variable `DIGITALOCEAN_ACCESS_TOKEN`. This allows to pass its value as a secret if desired. For example, to manually set the environment variable on a `bash` shell:
 ```
 export DIGITALOCEAN_ACCESS_TOKEN=<DigitalOcean API token value>
 ```
 - [Download](https://git-scm.com/downloads) and [install](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) git.
 - [Download](https://www.terraform.io/downloads) and [install](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli) Terraform.
+- [Download](https://www.python.org/downloads/) and install Python, if it is not already included in your Operating System (OS).
 
 ### &bull; Download
 
