@@ -3,17 +3,17 @@
 ## Table of Contents
 
 1. [General](#1-general)
-  * [Overview](#&bull;-overview)
-  * [Requirements](#&bull;-requirements)
-  * [Download](#&bull;-download)
+  * [Overview](#-overview)
+  * [Requirements](#-requirements)
+  * [Download](#-download)
 2. [Terraform](#2-terraform)
-  * [Install](#&bull;-install)
-  * [Run](#&bull;-run)
-  * [Apply Changes](#&bull;-apply-changes)
-  * [Destroy](#&bull;-destroy)
-  * [Variables](#&bull;-variables)
-    * [terraform.tfvars](#&#9702;-terraformtfvars)
-    * [Environment Variables](#&#9702;-environment-variables)
+  * [Install](#-install)
+  * [Run](#-run)
+  * [Apply Changes](#-apply-changes)
+  * [Destroy](#-destroy)
+  * [Variables](#-variables)
+    * [terraform.tfvars](#-terraformtfvars)
+    * [Environment Variables](#-environment-variables)
 
 ## 1. General
 
